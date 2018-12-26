@@ -20,6 +20,10 @@ public class FileServer {
     private final ExecutorService exec = Executors.newCachedThreadPool();
     private int port = 9000;
 
+    public void setPort(int p) {
+        this.port = p;
+    }
+
     public void start() throws IOException {
         ServerSocket socket = new ServerSocket(port);
         while (!exec.isShutdown()) {
@@ -37,6 +41,9 @@ public class FileServer {
 
     public static void main(String[] args) throws IOException {
         FileServer fs = new FileServer();
+        if(args.length > 0)
+            fs.setPort(Integer.parseInt(args[0]));
+
         fs.start();
     }
 }
