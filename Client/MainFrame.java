@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.net.Socket;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.util.ArrayList;
 
 import javax.swing.DefaultListModel;
 import javax.swing.JButton;
@@ -16,6 +17,10 @@ import javax.swing.JList;
 import javax.swing.JScrollPane;
 import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
+import client.FileClient;
+
+// compile: javac -d . MainFrame.java
+// run: java MainFrame
 
 public class MainFrame extends JFrame {
 	
@@ -107,13 +112,28 @@ public class MainFrame extends JFrame {
 				if (client == null)
 					return;
 				client.connect();
-				int index = list.getSelectedIndex();
-				String path = (String)listModel.getElementAt(index);
-				try{
-					client.receiveFileFromServer(path);
-				} catch (Exception e1) {
-					e1.printStackTrace();
-				}			
+				client.askForFiles();
+				ArrayList<String> stringList = new ArrayList<String>();
+				int[] selectedIx = list.getSelectedIndices();
+				if ( selectedIx.length == 0 ) {
+					System.out.println("Please select a file/files first.");
+				} else if ( selectedIx.length == 1 ) {
+					try {
+						String fileName = list.getModel().getElementAt(selectedIx[0]);
+						client.receiveFileFromServer(fileName);
+					} catch (Exception exception) {
+						System.out.println(exception.getMessage());
+					}
+				} else {
+					for (int i = 0; i < selectedIx.length; i++) {
+						stringList.add(list.getModel().getElementAt(selectedIx[i]));
+					}
+					try{
+						client.receiveFilesFromServer(stringList);
+					} catch (Exception e1) {
+						e1.printStackTrace();
+					}	
+				}		
 			}
 		});
 

@@ -15,9 +15,11 @@ import java.util.logging.Logger;
 
 import server.ClientRunnable;
 
+// compile: javac FileServer.java
+
 public class FileServer {
 
-    private final ExecutorService exec = Executors.newCachedThreadPool();
+    private final ExecutorService executorService = Executors.newCachedThreadPool();
     private int port = 9000;
 
     public void setPort(int p) {
@@ -25,25 +27,25 @@ public class FileServer {
     }
 
     public void start() throws IOException {
-        ServerSocket socket = new ServerSocket(port);
-        while (!exec.isShutdown()) {
-            System.out.println("Server is waiting for client ...");
-            Socket conn = socket.accept();
-            exec.execute(new ClientRunnable(conn));
+        ServerSocket serverSocket = new ServerSocket(this.port);
+        System.out.println("Socket server started on port " + this.port + " successfully.");
+        while (!executorService.isShutdown()) {
+            Socket socket = serverSocket.accept();
+            executorService.execute(new ClientRunnable(socket));
         }
-        socket.close();
+        serverSocket.close();
     }
  
     public void stop() {
         System.out.println("Shutting down server...");
-        exec.shutdown();
+        executorService.shutdown();
     }
 
     public static void main(String[] args) throws IOException {
-        FileServer fs = new FileServer();
+        FileServer fileServer = new FileServer();
         if(args.length > 0)
-            fs.setPort(Integer.parseInt(args[0]));
+            fileServer.setPort(Integer.parseInt(args[0]));
 
-        fs.start();
+        fileServer.start();
     }
 }
