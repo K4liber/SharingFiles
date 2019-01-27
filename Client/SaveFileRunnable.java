@@ -8,6 +8,8 @@ import java.io.*;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+// compile: javac -d . SaveFileRunnable.java
+
 public class SaveFileRunnable implements Runnable{
 
     private Socket socket;
