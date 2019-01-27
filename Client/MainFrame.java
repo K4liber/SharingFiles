@@ -112,24 +112,16 @@ public class MainFrame extends JFrame {
 				if (client == null)
 					return;
 				client.connect();
-				client.askForFiles();
 				ArrayList<String> stringList = new ArrayList<String>();
 				int[] selectedIx = list.getSelectedIndices();
 				if ( selectedIx.length == 0 ) {
 					System.out.println("Please select a file/files first.");
-				} else if ( selectedIx.length == 1 ) {
-					try {
-						String fileName = list.getModel().getElementAt(selectedIx[0]);
-						client.receiveFileFromServer(fileName);
-					} catch (Exception exception) {
-						System.out.println(exception.getMessage());
-					}
 				} else {
 					for (int i = 0; i < selectedIx.length; i++) {
 						stringList.add(list.getModel().getElementAt(selectedIx[i]));
 					}
 					try{
-						client.receiveFilesFromServer(stringList);
+						client.receiveFileFromServer(stringList);
 					} catch (Exception e1) {
 						e1.printStackTrace();
 					}	

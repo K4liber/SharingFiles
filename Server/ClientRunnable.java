@@ -2,7 +2,6 @@ package server;
 
 import java.io.*; 
 import java.net.Socket;
-import java.net.ServerSocket;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import adds.FileContent;
@@ -12,7 +11,6 @@ import adds.FileContent;
 public class ClientRunnable implements Runnable {
 
     private Socket socket = null;
-    private ServerSocket serverSocket = null;
 
     public ClientRunnable(Socket socket) {
         this.socket = socket;
@@ -30,9 +28,6 @@ public class ClientRunnable implements Runnable {
                 uploadingFile(ois);
             } else if (message != null && message.equals("list")) {
                 sendFileNames();
-            } else if (message != null && message.equals("multipleDownload")) {
-                ObjectInputStream ois = new ObjectInputStream(this.socket.getInputStream());
-                sendFilesContent(ois);
             } else {
                 sendFileContent(message);
             }
@@ -70,66 +65,30 @@ public class ClientRunnable implements Runnable {
         }
     }
 
-    private void sendFilesContent(ObjectInputStream ois) {
-        try {
-            Object object = ois.readObject();
-
-            if (object == null)
-                return;
-
-            ArrayList<String> list = (ArrayList<String>) object;
-            ArrayList<FileContent> fileList = new ArrayList<FileContent>();
-            String message = "Sending files: \n";
-            Thread[] threads = new Thread[list.size()];
-
-            for (int i = 0; i < list.size(); i++) {
-                String fileName = list.get(i);
-                message = message + fileName + "\n";
-                String filePath = System.getProperty("user.dir") + "/Files/" + fileName;
-                File file = new File(filePath);
-                fileList.add(new FileContent(file, fileName));
-            }
-
-            printInfo(
-                Thread.currentThread().getId(), 
-                message, 
-                this.socket.getRemoteSocketAddress().toString()
-            );
-
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            ObjectOutput oo = new ObjectOutputStream(baos);
-            oo.writeObject(fileList);
-            byte[] content =  baos.toByteArray();
-            ObjectOutputStream oos = new ObjectOutputStream(this.socket.getOutputStream());
-            oos.writeObject(content);
-            oos.flush();           
-
-        } catch (IOException e) {
-            System.out.println("IOException");
-            e.printStackTrace();
-        } catch (ClassNotFoundException e) {
-            System.out.println("ClassNotFoundException");
-            e.printStackTrace();
-        }
+    private byte[] convertToBytes(Object object) throws IOException {
+        try (ByteArrayOutputStream bos = new ByteArrayOutputStream();
+             ObjectOutput out = new ObjectOutputStream(bos)) {
+            out.writeObject(object);
+            return bos.toByteArray();
+        } 
     }
 
     private void sendFileContent(String fileName) {
         String filePath = System.getProperty("user.dir") + "/Files/" + fileName;
-        File myFile = new File(filePath);
+        File file = new File(filePath);
 
-        if (!myFile.exists()) {
-            System.out.println("File does not exist!");
+        if (!file.exists()) {
             return;
         }
 
         printInfo(
             Thread.currentThread().getId(), 
-            "Sending file: " + myFile.getAbsolutePath(), 
+            "Sending file: " + file.getAbsolutePath(), 
             this.socket.getRemoteSocketAddress().toString()
         );
 
         try {
-            byte[] content = Files.readAllBytes(myFile.toPath());
+            byte[] content = convertToBytes(new FileContent(file, fileName));
             ObjectOutputStream oos = new ObjectOutputStream(this.socket.getOutputStream());
             oos.writeObject(content);
             oos.flush();

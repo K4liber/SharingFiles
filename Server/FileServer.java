@@ -19,11 +19,17 @@ import server.ClientRunnable;
 
 public class FileServer {
 
-    private final ExecutorService executorService = Executors.newCachedThreadPool();
+    private ExecutorService executorService;
     private int port = 9000;
 
-    public void setPort(int p) {
-        this.port = p;
+    public FileServer() {
+        this.executorService = Executors.newFixedThreadPool(
+            Runtime.getRuntime().availableProcessors()
+        );
+    }
+
+    public void setPort(int port) {
+        this.port = port;
     }
 
     public void start() throws IOException {

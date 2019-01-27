@@ -17,13 +17,17 @@ import adds.FileContent;
 
 public class FileClient {
 
-    private final ExecutorService executorService = Executors.newCachedThreadPool();
-    public List<File> fileList = new ArrayList<File>();
+    private ExecutorService executorService;
+    private List<File> fileList;
     private String hostName;
-    int port;
+    private int port;
     private Socket sock = null;
 
     public FileClient(String hostName, int port) {
+        this.executorService = Executors.newFixedThreadPool(
+            Runtime.getRuntime().availableProcessors()
+        );
+        this.fileList = new ArrayList<File>();
     	this.hostName = hostName;
     	this.port = port;
     }
@@ -37,18 +41,14 @@ public class FileClient {
         }
     }
 
-    public void askForFiles() {
+    public Socket getNewConnection() {
         try {
-            OutputStream os = sock.getOutputStream();
-            OutputStreamWriter osw = new OutputStreamWriter(os);
-            BufferedWriter bw = new BufferedWriter(osw);
-            String sendMessage = "multipleDownload\n";
-            bw.write(sendMessage);
-            bw.flush();
+            return new Socket(hostName, port);
         } catch (IOException e) {
-            System.out.println("IOException");
+            System.out.println("UnknownHostException");
             e.printStackTrace();
         }
+        return null;
     }
     
     public String[] getFileList() {
@@ -73,21 +73,6 @@ public class FileClient {
         return fileList;
     }
 
-    public void receiveFileFromServer(String fileName) throws Exception{    
-        InputStream socketInputStream = sock.getInputStream();
-        System.out.println("Asking for file: " + fileName);
-        OutputStream os = sock.getOutputStream();
-        OutputStreamWriter osw = new OutputStreamWriter(os);
-        BufferedWriter bw = new BufferedWriter(osw);
-        String sendMessage = fileName;
-        bw.write(sendMessage + "\n");
-        bw.flush();
-        ObjectInputStream ois = new ObjectInputStream(socketInputStream);
-        byte[] content = (byte[]) ois.readObject();
-        FileContent file = (FileContent) convertFromBytes(content);
-        saveFile(file);
-    }
-
     private Object convertFromBytes(byte[] bytes) throws IOException, ClassNotFoundException {
         try (ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
              ObjectInput in = new ObjectInputStream(bis)) {
@@ -95,29 +80,19 @@ public class FileClient {
         } 
     }
     
-    public void receiveFilesFromServer(ArrayList<String> stringList) throws Exception{
+    public void receiveFileFromServer(ArrayList<String> stringList) throws Exception{
         FileDialog fileDialog = new FileDialog(new Frame(),"Choose Destination", FileDialog.LOAD);
         fileDialog.setDirectory(null);
         fileDialog.setFile(null);
         fileDialog.setVisible(true);
         String directory = fileDialog.getDirectory();
-        System.out.println("Asking for files:");
-
-        for(int i=0; i<stringList.size(); i++) {
-            System.out.println(stringList.get(i));
-        }
         
-        ObjectOutputStream oos = new ObjectOutputStream(sock.getOutputStream());
-        oos.writeObject(stringList);
-        oos.flush();
-        ObjectInputStream ois = new ObjectInputStream(sock.getInputStream());
-        byte[] content = (byte[]) ois.readObject();
-
-        if (content == null)
-            return;
-
-        ArrayList<FileContent> fileList = (ArrayList<FileContent>) convertFromBytes(content);
-        saveFiles(fileList, directory);
+        this.sock.close();
+        for (int i=0; i<stringList.size(); i++) {
+            this.executorService.execute(
+                new SaveFileRunnable(getNewConnection(), stringList.get(i), directory)
+            );
+        }
     }
 
     public void uploadFile() throws Exception{    
@@ -142,33 +117,6 @@ public class FileClient {
             System.out.println("Sending file canceled.");
             oos.writeObject(null);
             oos.flush();
-        }
-    }
-
-    public void saveFile(FileContent fileContent) throws IOException {
-        FileDialog fileDialog = new FileDialog(new Frame(),"Choose Destination", FileDialog.SAVE);
-        fileDialog.setDirectory(null);
-        fileDialog.setFile(fileContent.getFileName());
-        fileDialog.setVisible(true);
-
-        if (fileDialog.getDirectory() != null && fileDialog.getFile() != null) {
-            String targetFileName = fileDialog.getDirectory()
-                + fileDialog.getFile();
-            System.out.println("File will be saved to: " + targetFileName);
-            Path path = Paths.get(targetFileName);
-            Files.write(path, fileContent.getFileBytes());
-        } else {
-            System.out.println("File saving canceled.");
-        }
-    }
-
-    public void saveFiles(ArrayList<FileContent> fileList, String directory) throws IOException {
-
-        for (FileContent file: fileList) {
-            String targetFileName = directory + file.getFileName();
-            Path path = Paths.get(targetFileName);
-            System.out.println("File will be saved to: " + targetFileName);
-            Files.write(path, file.getFileBytes());
         }
     }
 }
